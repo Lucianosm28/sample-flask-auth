@@ -5,7 +5,7 @@ from flask_login import LoginManager, login_user, current_user, logout_user, log
 
 app = Flask (__name__)
 app.config['SECRET_KEY'] = "your_secret_key"
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql:///root:admin123@127.0.0.1:3306/flask-crud'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:admin123@127.0.0.1:3306/flask-crud'
 
 login_manager = LoginManager()
 db.init_app(app)
@@ -48,7 +48,7 @@ def create_user():
   password = data.get("password")
 
   if username and password:
-    user = User(username=username, password=password)
+    user = User(username=username, password=password, role='user')
     db.session.add(user)
     db.session.commit()
     return jsonify({"message": "Usuario cadastrado com sucesso"})
@@ -63,7 +63,7 @@ def read_user(id_user):
   if user:
     return {"username": user.username}
 
-  return jsonify({"message": "Usuario não encontrado"}), 404
+  return jsonify({"message": "Usuário não encontrado"}), 404
 
 @app.route('/user/<int:id_user>', methods=["PUT"])
 @login_required
@@ -71,11 +71,11 @@ def update_user(id_user):
   data = request.json
   user = User.query.get(id_user)
 
-  if user and data.get("password"):
-    user.password = data.get("password")
-    db.session.commit()
+  if id_user != current_user.id and current_user.role == "user":
+      return jsonify({"message": "Operação não permitida"}), 403
+      db.session.commit()
 
-    return jsonify({"message": f"Usuário {id_user} atualizado com sucesso"})
+      return jsonify({"message": f"Usuário {id_user} atualizado com sucesso"})
 
   return jsonify({"message": "Usuário não encontrado"}), 404
 
@@ -86,6 +86,9 @@ def delete_user(id_user):
 
   if id_user == current_user.id:
     return jsonify({"message": "Deleção não permitida"}), 403
+  
+  if current_user.role != 'admin':
+    return jsonify({"message": "Operação não permitida"}), 403
 
   if user:
     db.session.delete(user)
